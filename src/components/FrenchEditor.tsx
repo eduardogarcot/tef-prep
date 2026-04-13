@@ -94,13 +94,21 @@ export function FrenchEditor({ value, onChange, disabled, placeholder }: FrenchE
       </div>
 
       {/* Textarea — scrolls on its own; toolbar never overlaps content */}
+      {/* Spell-check, autocorrect and browser/extension assistants are intentionally
+          disabled — this is an exam practice tool; no outside help allowed. */}
       <textarea
         ref={textareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         placeholder={placeholder}
-        spellCheck
+        spellCheck={false}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        data-gramm="false"
+        data-gramm_editor="false"
+        data-enable-grammarly="false"
         lang="fr"
         className="resize-none p-4 text-base text-gray-900 placeholder-gray-400 outline-none bg-white disabled:bg-gray-50 disabled:text-gray-500 leading-relaxed overflow-y-auto"
         style={{ minHeight: '22rem', maxHeight: '60vh' }}

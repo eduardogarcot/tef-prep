@@ -7,6 +7,11 @@ import {
 } from '@/lib/prompts/tef-evaluator'
 import type { TEFEvaluationResponse } from '@/lib/prompts/tef-evaluator'
 import type { Json } from '@/lib/database.types'
+import { sendEvaluationNotification } from '@/lib/notifications'
+
+// Extend Vercel function timeout to 5 min (Pro) / 60s (Hobby).
+// Claude claude-sonnet-4-6 typically responds in 15–30s; 60s covers 99% of cases.
+export const maxDuration = 300
 
 export async function POST(request: NextRequest) {
   // 1. Authenticate
@@ -116,6 +121,23 @@ export async function POST(request: NextRequest) {
   if (evalError) {
     console.error('Failed to save evaluation:', evalError)
     return NextResponse.json({ error: 'Failed to save evaluation' }, { status: 500 })
+  }
+
+  // 7. Send email notification (non-fatal — never block the response)
+  if (user.email) {
+    try {
+      await sendEvaluationNotification({
+        toEmail: user.email,
+        section: exercise.section,
+        title: exercise.prompt_title,
+        globalScore: evaluation.global_score,
+        nclcLevel: evaluation.estimated_nclc_level,
+        estimatedTefScore: evaluation.estimated_tef_score,
+        exerciseId: exercise.id,
+      })
+    } catch (err) {
+      console.error('Email notification failed (non-fatal):', err)
+    }
   }
 
   return NextResponse.json({
