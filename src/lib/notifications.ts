@@ -99,10 +99,17 @@ export async function sendEvaluationNotification({
   const fromAddress = process.env.RESEND_FROM_EMAIL ?? 'TEF Prep <onboarding@resend.dev>'
 
   const resend = new Resend(apiKey)
-  await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: fromAddress,
     to: toEmail,
     subject: `✅ TEF evaluation ready — Section ${section} · ${globalScore}/12 (${nclcLevel})`,
     html,
   })
+
+  if (error) {
+    // Surface the full Resend error so it's visible in server logs / Vercel function logs
+    throw new Error(`Resend error: ${JSON.stringify(error)}`)
+  }
+
+  console.log(`Email sent successfully — id: ${data?.id} → ${toEmail}`)
 }
