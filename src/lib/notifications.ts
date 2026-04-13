@@ -96,9 +96,11 @@ export async function sendEvaluationNotification({
 </body>
 </html>`
 
+  const fromAddress = process.env.RESEND_FROM_EMAIL ?? 'TEF Prep <onboarding@resend.dev>'
+
   const resend = new Resend(apiKey)
   await resend.emails.send({
-    from: 'TEF Prep <onboarding@resend.dev>',
+    from: fromAddress,
     to: toEmail,
     subject: `✅ TEF evaluation ready — Section ${section} · ${globalScore}/12 (${nclcLevel})`,
     html,
