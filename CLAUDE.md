@@ -174,6 +174,10 @@ Exported as `EXERCISES: Record<'A' | 'B' | 'C', TEFExercise[]>` where `TEFExerci
 
 `interference_type`: `"lexical" | "syntactic" | "gender" | "conjugation" | "orthographic" | null`
 
+## No-Repeat Exercise Logic
+
+On practice page mount, `prompt_title + section` are fetched from the user's `exercises` table and stored in `usedTitles: Record<Section, Set<string>>`. The `availablePool(section, usedTitles)` helper filters the static bank to unused exercises before `pickRandom`. If a section is fully exhausted, `availablePool` falls back to the full bank so the user can still practice. After a successful submission, `usedTitles` is updated in-place so "Practice again" immediately reflects the new exercise as used. Each section card shows `X new` (or `✓ All done`) once history finishes loading.
+
 ## Key Conventions
 - All API calls to Claude MUST be server-side only (API routes). Never expose API key to client.
 - Use Supabase RLS for data isolation between users.
