@@ -1,5 +1,21 @@
 # TEF Prep — Project Context for Claude Code
 
+## CLAUDE.md Maintenance Rule
+
+**After completing any feature, fix, or refactor — update this file before closing the task.**
+
+Specifically, update:
+- **Project Structure** — add/remove/rename files and update their inline descriptions
+- **Key Conventions** — add any new patterns, constraints, or decisions introduced
+- **Database Schema** — reflect any migrations or new tables
+- **Evaluation Response Shape** — if the evaluator prompt or TypeScript interfaces changed
+- **Stack** — if a dependency was added, upgraded, or removed
+- **Exercise Bank** — if exercise counts changed
+
+Keep entries factual and terse. Do not add entries for things already derivable from reading the code.
+
+---
+
 ## Overview
 Web app for TEF Canada Expression Écrite exam preparation. 2-3 users (personal use). Simulates real TEF writing test conditions with AI-powered evaluation using Claude API.
 
@@ -47,12 +63,12 @@ src/
 │   ├── database.types.ts           # Generated Supabase types (Exercise, Evaluation, Json)
 │   ├── analytics.ts                # Pure functions: streak, scoreToNCLC, aggregateErrors, etc.
 │   └── prompts/
-│       └── tef-evaluator.ts        # ⚠️ OLD 2-section version — must be replaced with root version
+│       └── tef-evaluator.ts        # ✅ Section-specific prompts (A/B/C) + types + SECTION_CONFIG — source of truth for imports
 ├── hooks/
 │   ├── useAuth.ts                  # Supabase user subscription hook
 │   └── useTimer.ts                 # Countdown timer hook
 middleware.ts                       # Session refresh + route protection (/login redirect)
-tef-evaluator.ts                    # ✅ NEW 3-section version (A/B/C) — source of truth
+tef-evaluator.ts                    # Re-export barrel → src/lib/prompts/tef-evaluator.ts (documentation only, not in import graph)
 tef-exercises.ts                    # Static exercise bank: 271 exercises (97A + 80B + 94C)
 ```
 
@@ -163,7 +179,7 @@ Exported as `EXERCISES: Record<'A' | 'B' | 'C', TEFExercise[]>` where `TEFExerci
 - Use Supabase RLS for data isolation between users.
 - Supabase client: `createBrowserClient()` in Client Components, `createServerClient()` in Server Components / API routes. Both live in `src/lib/`.
 - French character support is critical: é è ê ë, à â, ù û ü, ô, î ï, ç, œ, æ, «», and accented capitals (À, É, È, Ê, Ç, etc.). Handled by `FrenchEditor.tsx`.
-- **Source of truth for evaluator**: `tef-evaluator.ts` at project root. The copy at `src/lib/prompts/tef-evaluator.ts` is outdated and must be replaced.
+- **Source of truth for evaluator**: `src/lib/prompts/tef-evaluator.ts` — three section-specific system prompts (`TEF_SYSTEM_PROMPT_A/B/C`), selector `getSystemPromptForSection(section)`, `buildEvaluationMessage()`, all TypeScript interfaces, and `SECTION_CONFIG`. The root `tef-evaluator.ts` is a re-export barrel kept for documentation only.
 - Timer logic is in the `useTimer` hook (`src/hooks/useTimer.ts`), not a standalone component.
 - Word count must update live as user types (handled in practice page).
 - All UI text can be in English (users are **Spanish/English speakers** learning French — the evaluator actively detects Spanish interference: lexical false friends, syntactic calques, gender errors, conjugation confusion, orthographic issues).
