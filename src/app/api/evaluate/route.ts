@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@/lib/supabase-server'
 import {
-  TEF_EVALUATOR_SYSTEM_PROMPT,
+  getSystemPromptForSection,
   buildEvaluationMessage,
 } from '@/lib/prompts/tef-evaluator'
 import type { TEFEvaluationResponse } from '@/lib/prompts/tef-evaluator'
@@ -72,8 +72,8 @@ export async function POST(request: NextRequest) {
   try {
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      system: TEF_EVALUATOR_SYSTEM_PROMPT,
+      max_tokens: 8192,
+      system: getSystemPromptForSection(exercise.section as 'A' | 'B' | 'C'),
       messages: [{ role: 'user', content: userMessage }],
     })
 
