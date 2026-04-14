@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { EXERCISES } from '@/lib/exercises'
 import { SECTION_CONFIG } from '@/lib/prompts/tef-evaluator'
 import { FrenchEditor } from '@/components/FrenchEditor'
@@ -22,6 +22,14 @@ function countWords(text: string): number {
 
 function pickRandom<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
+}
+
+function availablePool(
+  section: Section,
+  usedTitles: Record<Section, Set<string>>
+): readonly TEFExercise[] {
+  const unused = EXERCISES[section].filter((e) => !usedTitles[section].has(e.title))
+  return unused.length > 0 ? unused : EXERCISES[section]
 }
 
 const DEFAULT_MINUTES: Record<Section, number> = {
@@ -138,6 +146,33 @@ export default function PracticePage() {
   const [exerciseId, setExerciseId] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
+  // Used-exercise tracking — loaded once on mount
+  const [usedTitles, setUsedTitles] = useState<Record<Section, Set<string>>>({
+    A: new Set(),
+    B: new Set(),
+    C: new Set(),
+  })
+  const [loadingHistory, setLoadingHistory] = useState(true)
+
+  useEffect(() => {
+    async function fetchUsedTitles() {
+      const supabase = createBrowserClient()
+      const { data } = await supabase
+        .from('exercises')
+        .select('prompt_title, section')
+      if (data) {
+        const used: Record<Section, Set<string>> = { A: new Set(), B: new Set(), C: new Set() }
+        for (const row of data) {
+          const s = row.section as Section
+          if (s === 'A' || s === 'B' || s === 'C') used[s].add(row.prompt_title)
+        }
+        setUsedTitles(used)
+      }
+      setLoadingHistory(false)
+    }
+    void fetchUsedTitles()
+  }, [])
+
   // ── Timer ──────────────────────────────────────────────────────────────────
 
   const handleExpire = useCallback(() => {
@@ -152,7 +187,7 @@ export default function PracticePage() {
 
   function selectSection(s: Section) {
     setSection(s)
-    setExercise(pickRandom(EXERCISES[s]))
+    setExercise(pickRandom(availablePool(s, usedTitles)))
     setTimeLimitMinutes(DEFAULT_MINUTES[s])
   }
 
@@ -210,6 +245,10 @@ export default function PracticePage() {
       const data = await res.json() as { exerciseId: string; evaluation: TEFEvaluationResponse }
       setExerciseId(data.exerciseId)
       setEvaluation(data.evaluation)
+      setUsedTitles((prev) => ({
+        ...prev,
+        [section]: new Set([...prev[section], exercise.title]),
+      }))
       setPhase('results')
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Something went wrong')
@@ -267,6 +306,10 @@ export default function PracticePage() {
           <div className="mt-10 grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-3">
             {SECTION_CARDS.map((card) => {
               const isSelected = section === card.id
+              const unusedCount = loadingHistory
+                ? null
+                : EXERCISES[card.id].filter((e) => !usedTitles[card.id].has(e.title)).length
+              const allDone = unusedCount === 0
               return (
                 <button
                   key={card.id}
@@ -311,6 +354,20 @@ export default function PracticePage() {
                     <span className="text-xs text-slate-500">{card.words}</span>
                     <span className="text-slate-200">·</span>
                     <span className="text-xs text-slate-500">{card.time}</span>
+                    {unusedCount !== null && (
+                      <>
+                        <span className="text-slate-200">·</span>
+                        <span className={`text-xs font-medium ${
+                          allDone
+                            ? 'text-amber-500'
+                            : isSelected
+                            ? ACCENT_BADGE_IDLE[card.accent]
+                            : 'text-slate-400'
+                        }`}>
+                          {allDone ? '✓ All done' : `${unusedCount} new`}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </button>
               )
@@ -333,10 +390,14 @@ export default function PracticePage() {
                     </span>
                   </div>
                   <button
-                    onClick={() => setExercise(pickRandom(EXERCISES[section]))}
+                    onClick={() => setExercise(pickRandom(availablePool(section, usedTitles)))}
                     className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-700 transition-colors"
                   >
                     <span>↻</span> Shuffle
+                    {!loadingHistory && (() => {
+                      const n = EXERCISES[section].filter((e) => !usedTitles[section].has(e.title)).length
+                      return n > 0 ? <span className="ml-0.5 text-slate-300">({n} new)</span> : <span className="ml-0.5 text-amber-400">(all done)</span>
+                    })()}
                   </button>
                 </div>
                 <p className="px-5 py-4 text-sm text-slate-700 leading-relaxed">
